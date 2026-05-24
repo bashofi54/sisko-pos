@@ -6,6 +6,7 @@ const cors = require("cors");
 require("dotenv").config();
 const db = require("./config/db"); // Biar bisa ngobrol sama MySQL
 const authRoutes = require("./routes/auth"); // Biar bisa ngurusin login/register
+const productRoutes = require("./routes/products"); // Biar bisa ngurusin produk
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,7 +20,7 @@ app.get("/ping", (req, res) => {
   res.json({ message: "Pong! Server Sisko nyala 🚀" });
 });
 
-// Route buat homepage
+// Route buat test homepage
 app.get("/", (req, res) => {
   res.json({
     status: "OK",
@@ -27,8 +28,10 @@ app.get("/", (req, res) => {
   });
 });
 
-// Pasang route auth (login/register)
+// Route
 app.use("/api", authRoutes);
+app.use("/api", productRoutes);
+
 
 // Nyalain server
 app.listen(PORT, () => {
