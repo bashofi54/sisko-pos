@@ -47,3 +47,7 @@ CREATE TABLE transaction_items (
     FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
+
+-- User default: username: admin, password: admin123
+INSERT INTO users (username, password, role) VALUES 
+('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9P4H.2.zWqn5p.G', 'admin');

@@ -5,6 +5,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const db = require("./config/db"); // Biar bisa ngobrol sama MySQL
+const authRoutes = require("./routes/auth"); // Biar bisa ngurusin login/register
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,9 @@ app.get("/", (req, res) => {
     message: "Selamat datang di API Sisko POS",
   });
 });
+
+// Pasang route auth (login/register)
+app.use("/api", authRoutes);
 
 // Nyalain server
 app.listen(PORT, () => {
