@@ -25,4 +25,12 @@ function authMiddleware(req, res, next) {
   });
 }
 
-module.exports = authMiddleware;
+// Satpam 2: Khusus Admin. Pake setelah authMiddleware
+function adminOnly(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Akses ditolak. Hanya admin yang bisa akses' });
+  }
+  next();
+}
+
+module.exports = { authMiddleware, adminOnly };
