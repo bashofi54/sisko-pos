@@ -275,4 +275,88 @@ git push
 3. **Ada "Kenapa"**: Tiap pilihan teknologi dijelasin alasannya.
 4. **Siap Cetak**: Tabel, code block, checklist udah rapi.
 
-Gimana guru, udah sesuai harapan? Kalau udah, kita commit dokumentasi ini terus lanjut **Langkah 7: Bikin Middleware Satpam** biar route `/api/products` ga bisa diakses orang tanpa tiket login.
+# SISKO POS - Backend API
+Point of Sale System dengan Express.js + MySQL. Role-based: Admin & Kasir.
+
+## Tech Stack
+- **Runtime**: Node.js + Express.js
+- **Database**: MySQL 8.0 
+- **Auth**: JWT + Bcryptjs
+- **Tools**: Thunder Client, phpMyAdmin
+
+## Fitur Backend - 10 Langkah
+| Langkah | Fitur | Endpoint | Role |
+| --- | --- | --- | --- |
+| 1-3 | Setup Project + DB | - | - |
+| 4 | CRUD Produk Basic | `GET /api/products` | All |
+| 5-6 | Login + JWT | `POST /api/login` | All |
+| 7 | Protected Route | `GET /api/products` | Auth only |
+| 8 | Role Admin CRUD | `POST/PUT/DELETE /api/products` | Admin |
+| 9 | Transaksi + Stock Lock | `POST /api/transactions` | Kasir/Admin |
+| 10 | Laporan Omzet | `GET /api/reports/today` | Admin |
+
+## Cara Install & Jalanin
+1. **Clone & Install**
+   ```bash
+   git clone [link-repo-kamu]
+   cd sisko-pos/server
+   npm install
+2. *Setup Database*
+   CREATE DATABASE sisko_pos_db;
+   USE sisko_pos_db;
+   -- [Tempel CREATE TABLE users, products, transactions, transaction_details]
+3. *Env File* `server/.env`
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=
+   DB_NAME=sisko_pos_db
+   JWT_SECRET=rahasia_sisko_guru_123
+4. *Jalanin Server*
+   npm run dev
+   Server jalan di `http://localhost:3000`
+
+## API Documentation
+### 1. Auth
+*POST `/api/login`*
+Request:
+{ "username": "admin", "password": "admin123" }
+Response: `{ "token": "eyJhb..." }`
+
+### 2. Produk
+*GET `/api/products`* - Liat semua produk `Auth required`
+*POST `/api/products`* - Tambah produk `Admin only`
+{ "name": "Indomie", "barcode": "899...", "price": 3500, "stock": 100 }
+### 3. Transaksi  
+*POST `/api/transactions`* - Bikin transaksi `Auth required`
+{
+  "items": [{"product_id": 1, "qty": 3}],
+  "payment_method": "cash"
+}
+Fitur: Auto kurang stok + `FOR UPDATE` biar ga minus kalau 2 kasir bareng.
+
+### 4. Laporan
+*GET `/api/reports/today`* - Omzet hari ini `Admin only`
+*GET `/api/reports/best-sellers`* - Top 5 barang laris `Admin only`
+
+## Testing
+Semua endpoint udah dites pake Thunder Client. Skenario:
+1. Admin bisa CRUD, kasir ditolak `403`
+2. Stok kurang → transaksi gagal `400` 
+3. 2 kasir bareng → stok tetap akurat karena `FOR UPDATE`
+
+## Git Workflow
+Project ini pake commit per fitur:
+feat(auth): add jwt login
+feat(products): add full crud with admin-only protection  
+feat(transactions): add create transaction with stock locking
+feat(reports): add today omzet and best-seller endpoints
+
+#### **2. Commit Dokumentasi**
+```bash
+git add README.md
+git commit -m "docs: final backend documentation for 10 steps"
+git push
+### *Kenapa format ini menang?*
+1. *HRD suka*: Langsung keliatan tech stack + fitur dalam tabel. 10 detik paham.
+2. *Dev lain suka*: Ada `Cara Install` + `API Documentation` lengkap. Bisa clone & jalan 5 menit.
+3. *Kamu untung*: Jadi portfolio. Taro link GitHub di CV, udah nunjukin kamu paham JWT, Transaction, Role, SQL.
