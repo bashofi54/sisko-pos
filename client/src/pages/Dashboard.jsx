@@ -159,6 +159,12 @@ export default function Dashboard() {
               >
                 Refresh
               </button>
+              <a
+                href="/pos"
+                className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
+              >
+                Buka Kasir
+              </a>
             </div>
           </div>
 

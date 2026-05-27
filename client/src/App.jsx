@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Pos from './pages/Pos';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -15,6 +16,9 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/dashboard" element={
           <ProtectedRoute><Dashboard /></ProtectedRoute>
+        } />
+        <Route path="/pos" element={
+          <ProtectedRoute><Pos /></ProtectedRoute>
         } />
       </Routes>
     </BrowserRouter>
