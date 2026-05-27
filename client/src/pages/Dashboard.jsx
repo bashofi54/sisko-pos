@@ -165,6 +165,14 @@ export default function Dashboard() {
               >
                 Buka Kasir
               </a>
+              {user?.role === "admin" && (
+                <a
+                  href="/reports"
+                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
+                >
+                  Laporan
+                </a>
+              )}
             </div>
           </div>
 
