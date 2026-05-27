@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -41,6 +43,49 @@ export default function Reports() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      // 1. Ambil data transaksi hari ini detail
+      const res = await api.get("/transactions"); // Backend guru udah ada
+      const today = new Date().toISOString().split("T")[0]; // Format: 2026-05-27
+      const todayTrans = res.data.filter((t) => t.created_at.startsWith(today));
+
+      // 2. Bikin sheet 1: Transaksi Hari Ini
+      const ws1 = XLSX.utils.json_to_sheet(
+        todayTrans.map((t) => ({
+          ID: t.id,
+          Kasir: t.kasir,
+          Total: t.total_price,
+          "Metode Bayar": t.payment_method,
+          Waktu: new Date(t.created_at).toLocaleString("id-ID"),
+        })),
+      );
+
+      // 3. Bikin sheet 2: Best Seller
+      const ws2 = XLSX.utils.json_to_sheet(
+        bestSellers.map((item, i) => ({
+          Rank: i + 1,
+          "Nama Produk": item.name,
+          "Total Terjual": item.total_terjual,
+        })),
+      );
+
+      // 4. Gabung jadi 1 file Excel
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws1, "Transaksi Hari Ini");
+      XLSX.utils.book_append_sheet(wb, ws2, "Best Seller");
+
+      // 5. Download
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const data = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
+      saveAs(data, `Laporan-SISKO-${today}.xlsx`);
+    } catch (error) {
+      alert("Gagal export: " + error.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
       <div className="mb-4 flex justify-between items-center">
@@ -53,12 +98,20 @@ export default function Reports() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Laporan Penjualan
         </h1>
-        <button
-          onClick={fetchReports}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-        >
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+          >
+            Export Excel
+          </button>
+          <button
+            onClick={fetchReports}
+            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {loading && (
