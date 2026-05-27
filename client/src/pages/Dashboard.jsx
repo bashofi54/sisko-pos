@@ -8,8 +8,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   
-  // State buat modal + form
+  // State modal tambah/edit
   const [showModal, setShowModal] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({ name: '', barcode: '', price: '', stock: '' });
   const [formErr, setFormErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,27 +40,63 @@ export default function Dashboard() {
     window.location.href = '/';
   };
 
+  const openAddModal = () => {
+    setIsEdit(false);
+    setFormData({ name: '', barcode: '', price: '', stock: '' });
+    setFormErr('');
+    setShowModal(true);
+  };
+
+  const openEditModal = (product) => {
+    setIsEdit(true);
+    setEditId(product.id);
+    setFormData({ 
+      name: product.name, 
+      barcode: product.barcode || '', 
+      price: product.price, 
+      stock: product.stock 
+    });
+    setFormErr('');
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormErr('');
     setSubmitting(true);
     
     try {
-      await api.post('/products', {
+      const payload = {
         name: formData.name,
         barcode: formData.barcode || null,
         price: Number(formData.price),
         stock: Number(formData.stock) || 0
-      });
+      };
+
+      if (isEdit) {
+        await api.put(`/products/${editId}`, payload);
+      } else {
+        await api.post('/products', payload);
+      }
       
-      setShowModal(false); // Tutup modal
-      setFormData({ name: '', barcode: '', price: '', stock: '' }); // Reset form
-      fetchProducts(); // Refresh tabel
+      setShowModal(false);
+      fetchProducts();
       
     } catch (error) {
-      setFormErr(error.response?.data?.message || 'Gagal tambah produk');
+      setFormErr(error.response?.data?.message || 'Gagal simpan produk');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Yakin mau hapus produk ini?')) return;
+    
+    try {
+      await api.delete(`/products/${id}`);
+      fetchProducts();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Gagal hapus produk');
     }
   };
 
@@ -81,7 +119,7 @@ export default function Dashboard() {
             <div className="flex gap-2">
               {user?.role === 'admin' && (
                 <button 
-                  onClick={() => setShowModal(true)} 
+                  onClick={openAddModal} 
                   className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
                 >
                   + Tambah Produk
@@ -105,12 +143,15 @@ export default function Dashboard() {
                     <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Barcode</th>
                     <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Harga</th>
                     <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Stok</th>
+                    {user?.role === 'admin' && (
+                      <th className="border dark:border-gray-600 p-2 text-center text-gray-900 dark:text-white">Aksi</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {products.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="border dark:border-gray-600 p-4 text-center text-gray-500 dark:text-gray-400">
+                      <td colSpan={user?.role === 'admin' ? 5 : 4} className="border dark:border-gray-600 p-4 text-center text-gray-500 dark:text-gray-400">
                         Belum ada produk
                       </td>
                     </tr>
@@ -121,6 +162,22 @@ export default function Dashboard() {
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.barcode || '-'}</td>
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">Rp {p.price?.toLocaleString('id-ID')}</td>
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.stock}</td>
+                        {user?.role === 'admin' && (
+                          <td className="border dark:border-gray-600 p-2 text-center">
+                            <button 
+                              onClick={() => openEditModal(p)}
+                              className="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600 mr-1"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(p.id)}
+                              className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                            >
+                              Hapus
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -131,11 +188,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* MODAL TAMBAH PRODUK */}
+      {/* MODAL TAMBAH/EDIT PRODUK */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Tambah Produk Baru</h3>
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+              {isEdit ? 'Edit Produk' : 'Tambah Produk Baru'}
+            </h3>
             
             {formErr && <p className="text-red-500 bg-red-100 dark:bg-red-900 p-2 rounded mb-4 text-sm">{formErr}</p>}
             
