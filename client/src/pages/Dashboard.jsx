@@ -7,6 +7,12 @@ export default function Dashboard() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  
+  // State buat modal + form
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({ name: '', barcode: '', price: '', stock: '' });
+  const [formErr, setFormErr] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchProducts = async () => {
     try {
@@ -32,6 +38,30 @@ export default function Dashboard() {
     window.location.href = '/';
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormErr('');
+    setSubmitting(true);
+    
+    try {
+      await api.post('/products', {
+        name: formData.name,
+        barcode: formData.barcode || null,
+        price: Number(formData.price),
+        stock: Number(formData.stock) || 0
+      });
+      
+      setShowModal(false); // Tutup modal
+      setFormData({ name: '', barcode: '', price: '', stock: '' }); // Reset form
+      fetchProducts(); // Refresh tabel
+      
+    } catch (error) {
+      setFormErr(error.response?.data?.message || 'Gagal tambah produk');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
@@ -48,9 +78,19 @@ export default function Dashboard() {
         <div className="mt-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Data Produk</h2>
-            <button onClick={fetchProducts} className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
-              Refresh
-            </button>
+            <div className="flex gap-2">
+              {user?.role === 'admin' && (
+                <button 
+                  onClick={() => setShowModal(true)} 
+                  className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                >
+                  + Tambah Produk
+                </button>
+              )}
+              <button onClick={fetchProducts} className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                Refresh
+              </button>
+            </div>
           </div>
 
           {loading && <p className="text-gray-500 dark:text-gray-400">Loading...</p>}
@@ -62,6 +102,7 @@ export default function Dashboard() {
                 <thead>
                   <tr className="bg-gray-200 dark:bg-gray-700">
                     <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Nama</th>
+                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Barcode</th>
                     <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Harga</th>
                     <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Stok</th>
                   </tr>
@@ -69,7 +110,7 @@ export default function Dashboard() {
                 <tbody>
                   {products.length === 0 ? (
                     <tr>
-                      <td colSpan="3" className="border dark:border-gray-600 p-4 text-center text-gray-500 dark:text-gray-400">
+                      <td colSpan="4" className="border dark:border-gray-600 p-4 text-center text-gray-500 dark:text-gray-400">
                         Belum ada produk
                       </td>
                     </tr>
@@ -77,6 +118,7 @@ export default function Dashboard() {
                     products.map((p) => (
                       <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.name}</td>
+                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.barcode || '-'}</td>
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">Rp {p.price?.toLocaleString('id-ID')}</td>
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.stock}</td>
                       </tr>
@@ -88,6 +130,67 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* MODAL TAMBAH PRODUK */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Tambah Produk Baru</h3>
+            
+            {formErr && <p className="text-red-500 bg-red-100 dark:bg-red-900 p-2 rounded mb-4 text-sm">{formErr}</p>}
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Nama Produk *"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Barcode"
+                value={formData.barcode}
+                onChange={(e) => setFormData({...formData, barcode: e.target.value})}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+              />
+              <input
+                type="number"
+                placeholder="Harga *"
+                value={formData.price}
+                onChange={(e) => setFormData({...formData, price: e.target.value})}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+                required
+              />
+              <input
+                type="number"
+                placeholder="Stok"
+                value={formData.stock}
+                onChange={(e) => setFormData({...formData, stock: e.target.value})}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
+              />
+              
+              <div className="flex gap-2 justify-end">
+                <button 
+                  type="button" 
+                  onClick={() => setShowModal(false)} 
+                  className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-400"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400"
+                >
+                  {submitting ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
