@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import StrukPrint from '../components/StrukPrint';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function POS() {
   const navigate = useNavigate();
@@ -10,20 +13,27 @@ export default function POS() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [payErr, setPayErr] = useState('');
+  const [showStruk, setShowStruk] = useState(false);
+  const [lastTransaction, setLastTransaction] = useState(null);
 
-  useEffect(() => {
-    fetchProducts();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-  }, []);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await api.get('/products');
       setProducts(res.data);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchProducts();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchProducts]);
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -31,10 +41,9 @@ export default function POS() {
   );
 
   const addToCart = (product) => {
-    setPayErr(''); // Hapus error lama
+    setPayErr('');
     const exist = cart.find(item => item.id === product.id);
     if (exist) {
-      // Cek stok dulu sebelum nambah qty
       if (exist.qty >= product.stock) {
         alert(`Stok ${product.name} cuma ${product.stock}`);
         return;
@@ -66,21 +75,55 @@ export default function POS() {
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
+  // FUNGSI DOWNLOAD PDF BARU
+  const downloadPDF = async () => {
+    const element = document.getElementById('struk-capture');
+    if (!element) return;
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      backgroundColor: '#ffffff'
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [80, canvas.height * 80 / canvas.width] // ukuran struk 80mm
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`Struk-${String(lastTransaction.data.transaction_id).padStart(6, '0')}.pdf`);
+  };
+
   const handleBayar = async () => {
     if (cart.length === 0) return;
     setPaying(true);
     setPayErr('');
 
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const payload = {
       items: cart.map(item => ({ product_id: item.id, qty: item.qty })),
-      payment_method: 'cash' // default dulu, nanti bisa dibikin pilih
+      payment_method: 'cash'
     };
 
     try {
       const res = await api.post('/transactions', payload);
-      alert(`Transaksi sukses! ID: ${res.data.transaction_id}\nTotal: Rp ${res.data.total_price.toLocaleString('id-ID')}`);
-      setCart([]); // Kosongin keranjang
-      fetchProducts(); // Refresh stok produk
+
+      const strukData = {
+        transaction_id: res.data.transaction_id,
+        total_price: res.data.total_price,
+        items: cart
+      };
+      setLastTransaction({ data: strukData, user });
+
+      setCart([]);
+      fetchProducts();
+      setShowStruk(true);
+
     } catch (error) {
       setPayErr(error.response?.data?.message || 'Transaksi gagal');
     } finally {
@@ -129,7 +172,7 @@ export default function POS() {
           )}
         </div>
 
-        {/* KANAN: KERANJANG */}
+        {/* KAN: KERANJANG */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
           <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Keranjang</h2>
 
@@ -172,6 +215,50 @@ export default function POS() {
           </div>
         </div>
       </div>
+
+      {/* MODAL PREVIEW STRUK + PDF */}
+      {showStruk && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowStruk(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900 dark:text-white">Preview Struk</h3>
+              <button
+                onClick={() => setShowStruk(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center overflow-auto max-h-[70vh]">
+              <div id="struk-capture" className="bg-white shadow-md">
+                <StrukPrint transaction={lastTransaction?.data} user={lastTransaction?.user} />
+              </div>
+            </div>
+
+            <div className="p-4 border-t dark:border-gray-700 flex gap-2">
+              <button
+                onClick={() => setShowStruk(false)}
+                className="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={downloadPDF}
+                className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import * as XLSX from "xlsx";
@@ -16,17 +16,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  useEffect(() => {
-    // Cek role dulu, kalo bukan admin tendang balik
-    if (user?.role !== "admin") {
-      navigate("/dashboard");
-      return;
-    }
-    fetchReports();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-  }, []);
-
-  const fetchReports = async () => {
+  // 1. DEKLARASI DULU PAKE useCallback
+  const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       const [todayRes, bestRes] = await Promise.all([
@@ -41,16 +32,29 @@ export default function Reports() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // 2. useEffect TARUH BAWAH + SETTIMEOUT
+  useEffect(() => {
+    // Cek role dulu, kalo bukan admin tendang balik
+    if (user?.role!== "admin") {
+      navigate("/dashboard");
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetchReports();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [user?.role, navigate, fetchReports]);
 
   const handleExportExcel = async () => {
     try {
-      // 1. Ambil data transaksi hari ini detail
-      const res = await api.get("/transactions"); // Backend guru udah ada
-      const today = new Date().toISOString().split("T")[0]; // Format: 2026-05-27
+      const res = await api.get("/transactions");
+      const today = new Date().toISOString().split("T")[0];
       const todayTrans = res.data.filter((t) => t.created_at.startsWith(today));
 
-      // 2. Bikin sheet 1: Transaksi Hari Ini
       const ws1 = XLSX.utils.json_to_sheet(
         todayTrans.map((t) => ({
           ID: t.id,
@@ -61,7 +65,6 @@ export default function Reports() {
         })),
       );
 
-      // 3. Bikin sheet 2: Best Seller
       const ws2 = XLSX.utils.json_to_sheet(
         bestSellers.map((item, i) => ({
           Rank: i + 1,
@@ -70,12 +73,10 @@ export default function Reports() {
         })),
       );
 
-      // 4. Gabung jadi 1 file Excel
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws1, "Transaksi Hari Ini");
       XLSX.utils.book_append_sheet(wb, ws2, "Best Seller");
 
-      // 5. Download
       const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       const data = new Blob([excelBuffer], {
         type: "application/octet-stream",
@@ -123,9 +124,8 @@ export default function Reports() {
         </p>
       )}
 
-      {!loading && !err && (
+      {!loading &&!err && (
         <>
-          {/* KARTU OMZET HARI INI */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
               <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -145,7 +145,6 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* TABEL BARANG TERLARIS */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
             <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
               5 Barang Terlaris
@@ -153,36 +152,23 @@ export default function Reports() {
             <table className="w-full">
               <thead>
                 <tr className="border-b dark:border-gray-600">
-                  <th className="text-left p-2 text-gray-900 dark:text-white">
-                    Rank
-                  </th>
-                  <th className="text-left p-2 text-gray-900 dark:text-white">
-                    Nama Produk
-                  </th>
-                  <th className="text-right p-2 text-gray-900 dark:text-white">
-                    Total Terjual
-                  </th>
+                  <th className="text-left p-2 text-gray-900 dark:text-white">Rank</th>
+                  <th className="text-left p-2 text-gray-900 dark:text-white">Nama Produk</th>
+                  <th className="text-right p-2 text-gray-900 dark:text-white">Total Terjual</th>
                 </tr>
               </thead>
               <tbody>
-                {bestSellers.length === 0 ? (
+                {bestSellers.length === 0? (
                   <tr>
-                    <td
-                      colSpan="3"
-                      className="text-center p-4 text-gray-500 dark:text-gray-400"
-                    >
+                    <td colSpan="3" className="text-center p-4 text-gray-500 dark:text-gray-400">
                       Belum ada penjualan
                     </td>
                   </tr>
                 ) : (
                   bestSellers.map((item, index) => (
                     <tr key={index} className="border-b dark:border-gray-700">
-                      <td className="p-2 text-gray-900 dark:text-white">
-                        #{index + 1}
-                      </td>
-                      <td className="p-2 text-gray-900 dark:text-white">
-                        {item.name}
-                      </td>
+                      <td className="p-2 text-gray-900 dark:text-white">#{index + 1}</td>
+                      <td className="p-2 text-gray-900 dark:text-white">{item.name}</td>
                       <td className="p-2 text-right font-bold text-gray-900 dark:text-white">
                         {item.total_terjual} pcs
                       </td>
