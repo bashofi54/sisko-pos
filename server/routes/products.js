@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const { authMiddleware, ownerOnly, gudangOnly } = require('../middleware/auth'); // GANTI DI SINI
+const { authMiddleware, ownerOnly, gudangOnly, kasirOnly } = require('../middleware/auth'); // GANTI DI SINI
 
 // GET /api/products - Semua role boleh
 router.get('/', authMiddleware, async (req, res) => {
@@ -40,7 +40,7 @@ router.put('/:id', authMiddleware, gudangOnly, async (req, res) => {
 });
 
 // DELETE /api/products/:id - CUMA OWNER
-router.delete('/:id', authMiddleware, ownerOnly, async (req, res) => { // GANTI DI SINI
+router.delete('/:id', authMiddleware, ownerOnly, gudangOnly, kasirOnly, async (req, res) => { // GANTI DI SINI
   const { id } = req.params;
   try {
     const result = await db.query('DELETE FROM products WHERE id = $1', [id]);

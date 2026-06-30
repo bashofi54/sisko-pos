@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom"; // <- 1. TAMBAH INI
 import api from "../api/axios";
 
 export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const role = user?.role; // 'owner' | 'gudang' | 'kasir'
 
-  // RULE ROLE BARU: GUDANG = BOS BARANG
+  // RULE ROLE BARU: SEMUA BOLEH TAMBAH, EDIT, HAPUS. CUMA OWNER YG LIAT LAPORAN
   const canAddProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // Semua boleh tambah
-  const canEditProducts = role === 'owner' || role === 'gudang'; // Owner & Gudang boleh edit
-  const canDeleteProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // Semua boleh hapus
+  const canEditProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // <- 2. KASIR DITAMBAHIN BOLEH EDIT
+  const canDeleteProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // <- 3. KASIR & GUDANG DITAMBAHIN BOLEH HAPUS
   const canSeeReports = role === 'owner'; // Cuma Owner
   const canOpenKasir = role === 'owner' || role === 'kasir'; // Owner & Kasir
   const canManageProducts = canAddProducts || canEditProducts || canDeleteProducts; // Ada kolom aksi atau enggak
@@ -157,20 +158,20 @@ export default function Dashboard() {
                 Refresh
               </button>
               {canOpenKasir && ( // <- CUMA Owner & Kasir
-                <a
-                  href="/pos"
+                <Link // <- 4. GANTI DARI <a> KE <Link>
+                  to="/pos" // <- 5. href -> to
                   className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
                 >
                   Buka Kasir
-                </a>
+                </Link>
               )}
               {canSeeReports && ( // <- Cuma Owner
-                <a
-                  href="/reports"
+                <Link // <- 6. GANTI DARI <a> KE <Link>
+                  to="/reports" // <- 7. href -> to
                   className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
                 >
                   Laporan
-                </a>
+                </Link>
               )}
             </div>
           </div>
@@ -209,7 +210,7 @@ export default function Dashboard() {
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.stock}</td>
                         {canManageProducts && (
                           <td className="border dark:border-gray-600 p-2 text-center space-x-1">
-                            {canEditProducts && ( // <- Owner & Gudang
+                            {canEditProducts && ( // <- Owner, Gudang, Kasir
                               <button
                                 onClick={() => openEditModal(p)}
                                 className="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600"
