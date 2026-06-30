@@ -1,36 +1,42 @@
 // File: server/middleware/auth.js
-// Tujuan: Jadi Satpam. Cek JWT di header tiap request.
-
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 function authMiddleware(req, res, next) {
-  // 1. Ambil tiket dari header. Format: "Bearer eyJhbGciOi..."
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Ambil bagian setelah "Bearer"
+  const token = authHeader && authHeader.split(' ')[1];
 
-  if (token == null) {
-    return res.status(401).json({ message: 'Akses ditolak. Tiket tidak ada' });
-  }
+  if (token == null) return res.status(401).json({ message: 'Akses ditolak. Tiket tidak ada' });
 
-  // 2. Verifikasi tiket: Asli apa palsu? Udah expired belum?
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Tiket tidak valid atau sudah hangus' });
-    }
-
-    // 3. Kalau tiket asli, simpan data user ke req.user
-    // Jadi route selanjutnya tau "Oh ini user id 1, role-nya admin"
-    req.user = user;
-    next(); // Lanjut ke route tujuan
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(403).json({ message: 'Tiket tidak valid atau sudah hangus' });
+    req.user = decoded.user || decoded; // Anti error format token
+    next();
   });
 }
 
-// Satpam 2: Khusus Admin. Pake setelah authMiddleware
-function adminOnly(req, res, next) {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Akses ditolak. Hanya admin yang bisa akses' });
+// 1. KHUS OWNER DOANG. Contoh: Hapus Produk, Lihat Laporan
+const ownerOnly = (req, res, next) => {
+  if (!req.user || req.user.role!== 'owner') {
+    return res.status(403).json({ message: 'Akses ditolak. Hanya Owner yang bisa akses' });
   }
   next();
-}
+};
 
-module.exports = { authMiddleware, adminOnly };
+// 2. KHUS GUDANG + OWNER. Contoh: Tambah/Ubah Produk
+const gudangOnly = (req, res, next) => {
+  if (!req.user || (req.user.role!== 'owner' && req.user.role!== 'gudang')) {
+    return res.status(403).json({ message: 'Akses ditolak. Hanya Gudang/Owner yang bisa akses' });
+  }
+  next();
+};
+
+// 3. KHUS KASIR + OWNER. Contoh: Checkout
+const kasirOnly = (req, res, next) => {
+  if (!req.user || (req.user.role!== 'owner' && req.user.role!== 'kasir')) {
+    return res.status(403).json({ message: 'Akses ditolak. Hanya Kasir/Owner yang bisa akses' });
+  }
+  next();
+};
+
+module.exports = { authMiddleware, ownerOnly, gudangOnly, kasirOnly };

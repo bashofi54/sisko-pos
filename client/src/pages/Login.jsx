@@ -12,7 +12,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/login', { username, password });
+      const res = await api.post('/auth/login', { username, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       nav('/dashboard');
@@ -55,7 +55,7 @@ export default function Login() {
         <button className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
           Masuk
         </button>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">admin / admin123</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">owner, kasir1, gudang1 password semua sama 123456</p>
       </form>
     </div>
   );

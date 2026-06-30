@@ -16,13 +16,12 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // 1. DEKLARASI DULU PAKE useCallback
   const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       const [todayRes, bestRes] = await Promise.all([
-        api.get("/reports/today"),
-        api.get("/reports/best-sellers"),
+        api.get("/transactions/reports/today"), // -> BE: /api/reports/today
+        api.get("/transactions/reports/best-sellers"), // -> BE: /api/reports/best-sellers
       ]);
       setTodayData(todayRes.data);
       setBestSellers(bestRes.data);
@@ -34,33 +33,26 @@ export default function Reports() {
     }
   }, []);
 
-  // 2. useEffect TARUH BAWAH + SETTIMEOUT
   useEffect(() => {
-    // Cek role dulu, kalo bukan admin tendang balik
-    if (user?.role!== "admin") {
+    // Blokir kalau bukan owner
+    if (user?.role!== "owner") {
       navigate("/dashboard");
       return;
     }
-
-    const timer = setTimeout(() => {
-      fetchReports();
-    }, 0);
-
-    return () => clearTimeout(timer);
+    fetchReports();
   }, [user?.role, navigate, fetchReports]);
 
   const handleExportExcel = async () => {
     try {
-      const res = await api.get("/transactions");
+      const res = await api.get("/transactions"); // -> BE: /api/transactions
       const today = new Date().toISOString().split("T")[0];
       const todayTrans = res.data.filter((t) => t.created_at.startsWith(today));
 
       const ws1 = XLSX.utils.json_to_sheet(
         todayTrans.map((t) => ({
           ID: t.id,
-          Kasir: t.kasir,
-          Total: t.total_price,
-          "Metode Bayar": t.payment_method,
+          Kasir: t.kasir, // <- BE ngirimnya 'kasir' ✅
+          Total: t.total_amount, // <- FIX: BE ngirimnya 'total_amount' ✅ bukan 'total_price'
           Waktu: new Date(t.created_at).toLocaleString("id-ID"),
         })),
       );
@@ -69,7 +61,7 @@ export default function Reports() {
         bestSellers.map((item, i) => ({
           Rank: i + 1,
           "Nama Produk": item.name,
-          "Total Terjual": item.total_terjual,
+          "Total Terjual": item.total_terjual, // <- BE ngirimnya 'total_terjual' ✅
         })),
       );
 
@@ -83,7 +75,7 @@ export default function Reports() {
       });
       saveAs(data, `Laporan-SISKO-${today}.xlsx`);
     } catch (error) {
-      alert("Gagal export: " + error.message);
+      alert("Gagal export: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -132,7 +124,7 @@ export default function Reports() {
                 Total Omzet Hari Ini
               </p>
               <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                Rp {todayData.total_omzet.toLocaleString("id-ID")}
+                Rp {Number(todayData.total_omzet).toLocaleString("id-ID")}
               </p>
             </div>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
@@ -140,7 +132,7 @@ export default function Reports() {
                 Total Transaksi Hari Ini
               </p>
               <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {todayData.total_transaksi} Transaksi
+                {Number(todayData.total_transaksi)} Transaksi
               </p>
             </div>
           </div>
@@ -170,7 +162,7 @@ export default function Reports() {
                       <td className="p-2 text-gray-900 dark:text-white">#{index + 1}</td>
                       <td className="p-2 text-gray-900 dark:text-white">{item.name}</td>
                       <td className="p-2 text-right font-bold text-gray-900 dark:text-white">
-                        {item.total_terjual} pcs
+                        {Number(item.total_terjual)} pcs
                       </td>
                     </tr>
                   ))

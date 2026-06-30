@@ -1,33 +1,27 @@
 // File: server/config/db.js
-// Tujuan: Satu pintu untuk ngobrol sama MySQL
+// Tujuan: Satu pintu untuk ngobrol sama PostgreSQL
 
-const mysql = require('mysql2');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-// Bikin "kolam koneksi". Kenapa kolam? Biar ga buka-tutup koneksi terus.
-// Ibarat warung: kalau tiap pelanggan dateng baru bikin gelas, lama.
-// Mending siapin 10 gelas di awal, tinggal pake.
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10, // Maksimal 10 koneksi barengan
-  queueLimit: 0
+// Bikin "kolam koneksi" versi Postgres
+// ssl: { rejectUnauthorized: false } wajib buat Neon/Supabase/Railway
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false 
+  },
+  max: 10, // Maksimal 10 koneksi barengan, sama kayak mysql2
 });
 
-// Tes koneksi + ubah ke Promise biar bisa pake async/await
-const db = pool.promise();
-
-// Coba konek 1x buat mastiin beneran nyambung
-db.getConnection()
-  .then(connection => {
-    console.log('Database MySQL sisko_pos_db berhasil konek ✅');
-    connection.release(); // Balikin gelasnya ke kolam
+// Tes koneksi 1x buat mastiin beneran nyambung
+pool.connect()
+  .then(client => {
+    console.log('Database PostgreSQL sisko_db berhasil konek ✅');
+    client.release(); // Balikin koneksinya ke kolam
   })
   .catch(err => {
     console.error('GAGAL KONEK DATABASE ❌:', err.message);
   });
 
-module.exports = db;
+module.exports = pool;

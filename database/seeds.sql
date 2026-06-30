@@ -1,13 +1,8 @@
--- File: database/seeds.sql
--- Tujuan: Isi data awal biar bisa langsung tes login & jualan
-USE sisko_pos_db;
-
--- Password untuk semua user: "123456"
--- Ini udah di-hash pake bcrypt. Jangan pake 123456 asli di production ya.
+-- File: database/seeds.sql VERSI FIX
 INSERT INTO users (name, username, password, role) VALUES
-('Bu Sari', 'owner', '$2b$10$fW4y.pO5e.tYcS9aY9z3.uQ1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT', 'owner'),
-('Mas Agus', 'kasir1', '$2b$10$fW4y.pO5e.tYcS9aY9z3.uQ1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT', 'kasir'),
-('Mba Rina', 'gudang1', '$2b$10$fW4y.pO5e.tYcS9aY9z3.uQ1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT', 'gudang');
+('Bu Sari', 'owner', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'owner'),
+('Mas Agus', 'kasir1', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'kasir'),
+('Mba Rina', 'gudang1', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'gudang');
 
 INSERT INTO products (name, barcode, price, stock) VALUES
 ('Indomie Goreng', '8992388123456', 3500, 100),

@@ -4,7 +4,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-const db = require("./config/db"); // Biar bisa ngobrol sama MySQL
+const db = require("./config/db"); // Biar bisa ngobrol sama Postgres
 const authRoutes = require("./routes/auth"); // Biar bisa ngurusin login/register
 const productRoutes = require("./routes/products"); // Biar bisa ngurusin produk
 const transactionRoutes = require("./routes/transactions"); // Biar bisa ngurusin transaksi
@@ -12,8 +12,19 @@ const transactionRoutes = require("./routes/transactions"); // Biar bisa ngurusi
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware: Biar bisa baca JSON + biar React boleh masuk
-app.use(cors());
+// 1. INI BAGIAN YANG DIGANTI 👇
+const allowedOrigins = [
+  'http://localhost:5173', // Buat dev lokal Vite
+  'https://sisko-client.vercel.app' // GANTI INI -> URL Vercel FE kamu yang bener
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true // Wajib kalau nanti pake cookie/session
+}));
+// SAMPAI SINI 👆
+
+// 2. Sisanya tetap sama persis
 app.use(express.json());
 
 // Route tes: buat mastiin server nyala
@@ -30,10 +41,9 @@ app.get("/", (req, res) => {
 });
 
 // Route
-app.use("/api", authRoutes);
-app.use("/api", productRoutes);
-app.use("/api", transactionRoutes);
-
+app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/transactions", transactionRoutes);
 
 // Nyalain server
 app.listen(PORT, () => {

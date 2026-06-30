@@ -16,6 +16,12 @@ export default function POS() {
   const [showStruk, setShowStruk] = useState(false);
   const [lastTransaction, setLastTransaction] = useState(null);
 
+  // Helper: Paksa jadi angka biar gak NaN
+  const safeNumber = (val) => {
+    const num = Number(val);
+    return isNaN(num)? 0 : num;
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -73,7 +79,10 @@ export default function POS() {
     setCart(cart.map(item => item.id === id? {...item, qty: newQty } : item));
   };
 
-  const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  // FIX 1: Total keranjang pakai safeNumber biar anti NaN
+  const total = cart.reduce((sum, item) => {
+    return sum + (safeNumber(item.price) * safeNumber(item.qty));
+  }, 0);
 
   // FUNGSI DOWNLOAD PDF BARU
   const downloadPDF = async () => {
@@ -113,10 +122,15 @@ export default function POS() {
     try {
       const res = await api.post('/transactions', payload);
 
+      // FIX 2: total_amount bukan total_price
       const strukData = {
         transaction_id: res.data.transaction_id,
-        total_price: res.data.total_price,
-        items: cart
+        total_price: res.data.total_amount, // <- INI YG DIBENERIN
+        items: cart.map(i => ({
+         ...i, 
+          price: safeNumber(i.price), // <- Kunci angka
+          qty: safeNumber(i.qty)
+        }))
       };
       setLastTransaction({ data: strukData, user });
 
@@ -165,7 +179,7 @@ export default function POS() {
                 >
                   <p className="font-bold text-sm text-gray-900 dark:text-white truncate">{p.name}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Stok: {p.stock}</p>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">Rp {p.price?.toLocaleString('id-ID')}</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">Rp {safeNumber(p.price).toLocaleString('id-ID')}</p>
                 </button>
               ))}
             </div>
@@ -192,7 +206,8 @@ export default function POS() {
                       <span>{item.qty}</span>
                       <button onClick={() => updateQty(item.id, item.qty + 1)} className="bg-gray-300 dark:bg-gray-600 px-2 rounded">+</button>
                     </div>
-                    <span>Rp {(item.price * item.qty).toLocaleString('id-ID')}</span>
+                    {/* FIX 3: Subtotal item juga pakai safeNumber */}
+                    <span>Rp {(safeNumber(item.price) * safeNumber(item.qty)).toLocaleString('id-ID')}</span>
                   </div>
                 </div>
               ))}

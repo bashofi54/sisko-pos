@@ -3,24 +3,28 @@ import api from "../api/axios";
 
 export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const role = user?.role; // 'owner' | 'gudang' | 'kasir'
+
+  // RULE ROLE BARU: GUDANG = BOS BARANG
+  const canAddProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // Semua boleh tambah
+  const canEditProducts = role === 'owner' || role === 'gudang'; // Owner & Gudang boleh edit
+  const canDeleteProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // Semua boleh hapus
+  const canSeeReports = role === 'owner'; // Cuma Owner
+  const canOpenKasir = role === 'owner' || role === 'kasir'; // Owner & Kasir
+  const canManageProducts = canAddProducts || canEditProducts || canDeleteProducts; // Ada kolom aksi atau enggak
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // State modal tambah/edit
   const [showModal, setShowModal] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({
-    name: "",
-    barcode: "",
-    price: "",
-    stock: "",
+    name: "", barcode: "", price: "", stock: "",
   });
   const [formErr, setFormErr] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // State Search
   const [search, setSearch] = useState("");
 
   const fetchProducts = async () => {
@@ -36,10 +40,7 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-  }, []);
+  useEffect(() => { fetchProducts(); }, []);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -71,7 +72,6 @@ export default function Dashboard() {
     e.preventDefault();
     setFormErr("");
     setSubmitting(true);
-
     try {
       const payload = {
         name: formData.name,
@@ -79,13 +79,11 @@ export default function Dashboard() {
         price: Number(formData.price),
         stock: Number(formData.stock) || 0,
       };
-
       if (isEdit) {
         await api.put(`/products/${editId}`, payload);
       } else {
         await api.post("/products", payload);
       }
-
       setShowModal(false);
       fetchProducts();
     } catch (error) {
@@ -97,7 +95,6 @@ export default function Dashboard() {
 
   const handleDelete = async (id) => {
     if (!confirm("Yakin mau hapus produk ini?")) return;
-
     try {
       await api.delete(`/products/${id}`);
       fetchProducts();
@@ -145,7 +142,7 @@ export default function Dashboard() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="p-1 px-2 border dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white"
               />
-              {user?.role === "admin" && (
+              {canAddProducts && ( // <- Owner, Gudang, Kasir
                 <button
                   onClick={openAddModal}
                   className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
@@ -159,13 +156,15 @@ export default function Dashboard() {
               >
                 Refresh
               </button>
-              <a
-                href="/pos"
-                className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
-              >
-                Buka Kasir
-              </a>
-              {user?.role === "admin" && (
+              {canOpenKasir && ( // <- CUMA Owner & Kasir
+                <a
+                  href="/pos"
+                  className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
+                >
+                  Buka Kasir
+                </a>
+              )}
+              {canSeeReports && ( // <- Cuma Owner
                 <a
                   href="/reports"
                   className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
@@ -176,81 +175,56 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {loading && (
-            <p className="text-gray-500 dark:text-gray-400">Loading...</p>
-          )}
-          {err && (
-            <p className="text-red-500 bg-red-100 dark:bg-red-900 p-2 rounded">
-              {err}
-            </p>
-          )}
+          {loading && <p className="text-gray-500 dark:text-gray-400">Loading...</p>}
+          {err && <p className="text-red-500 bg-red-100 dark:bg-red-900 p-2 rounded">{err}</p>}
 
           {!loading && !err && (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-200 dark:bg-gray-700">
-                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">
-                      Nama
-                    </th>
-                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">
-                      Barcode
-                    </th>
-                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">
-                      Harga
-                    </th>
-                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">
-                      Stok
-                    </th>
-                    {user?.role === "admin" && (
-                      <th className="border dark:border-gray-600 p-2 text-center text-gray-900 dark:text-white">
-                        Aksi
-                      </th>
+                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Nama</th>
+                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Barcode</th>
+                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Harga</th>
+                    <th className="border dark:border-gray-600 p-2 text-left text-gray-900 dark:text-white">Stok</th>
+                    {canManageProducts && (
+                      <th className="border dark:border-gray-600 p-2 text-center text-gray-900 dark:text-white">Aksi</th>
                     )}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredProducts.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={user?.role === "admin" ? 5 : 4}
-                        className="border dark:border-gray-600 p-4 text-center text-gray-500 dark:text-gray-400"
-                      >
+                      <td colSpan={canManageProducts ? 5 : 4}
+                        className="border dark:border-gray-600 p-4 text-center text-gray-500 dark:text-gray-400">
                         Belum ada produk
                       </td>
                     </tr>
                   ) : (
                     filteredProducts.map((p) => (
-                      <tr
-                        key={p.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
-                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">
-                          {p.name}
-                        </td>
-                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">
-                          {p.barcode || "-"}
-                        </td>
-                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">
-                          Rp {p.price?.toLocaleString("id-ID")}
-                        </td>
-                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">
-                          {p.stock}
-                        </td>
-                        {user?.role === "admin" && (
-                          <td className="border dark:border-gray-600 p-2 text-center">
-                            <button
-                              onClick={() => openEditModal(p)}
-                              className="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600 mr-1"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(p.id)}
-                              className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
-                            >
-                              Hapus
-                            </button>
+                      <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.name}</td>
+                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.barcode || "-"}</td>
+                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">Rp {p.price?.toLocaleString("id-ID")}</td>
+                        <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.stock}</td>
+                        {canManageProducts && (
+                          <td className="border dark:border-gray-600 p-2 text-center space-x-1">
+                            {canEditProducts && ( // <- Owner & Gudang
+                              <button
+                                onClick={() => openEditModal(p)}
+                                className="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDeleteProducts && ( // <- Owner, Gudang, Kasir
+                              <button
+                                onClick={() => handleDelete(p.id)}
+                                className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                              >
+                                Hapus
+                              </button>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -270,66 +244,25 @@ export default function Dashboard() {
             <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
               {isEdit ? "Edit Produk" : "Tambah Produk Baru"}
             </h3>
-
-            {formErr && (
-              <p className="text-red-500 bg-red-100 dark:bg-red-900 p-2 rounded mb-4 text-sm">
-                {formErr}
-              </p>
-            )}
-
+            {formErr && <p className="text-red-500 bg-red-100 dark:bg-red-900 p-2 rounded mb-4 text-sm">{formErr}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nama Produk *"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Barcode"
-                value={formData.barcode}
-                onChange={(e) =>
-                  setFormData({ ...formData, barcode: e.target.value })
-                }
-                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              />
-              <input
-                type="number"
-                placeholder="Harga *"
-                value={formData.price}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: e.target.value })
-                }
-                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-                required
-              />
-              <input
-                type="number"
-                placeholder="Stok"
-                value={formData.stock}
-                onChange={(e) =>
-                  setFormData({ ...formData, stock: e.target.value })
-                }
-                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-              />
-
+              <input type="text" placeholder="Nama Produk *" value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" required />
+              <input type="text" placeholder="Barcode" value={formData.barcode}
+                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" />
+              <input type="number" placeholder="Harga *" value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" required />
+              <input type="number" placeholder="Stok" value={formData.stock}
+                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" />
               <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-400"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400"
-                >
+                <button type="button" onClick={() => setShowModal(false)}
+                  className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-400">Batal</button>
+                <button type="submit" disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400">
                   {submitting ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
