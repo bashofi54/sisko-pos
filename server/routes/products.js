@@ -40,7 +40,7 @@ router.put('/:id', authMiddleware, gudangOnly, async (req, res) => {
 });
 
 // DELETE /api/products/:id - CUMA OWNER
-router.delete('/:id', authMiddleware, ownerOnly, gudangOnly, kasirOnly, async (req, res) => { // GANTI DI SINI
+router.delete('/:id', authMiddleware, kasirOnly, async (req, res) => { // GANTI DI SINI
   const { id } = req.params;
   try {
     const result = await db.query('DELETE FROM products WHERE id = $1', [id]);

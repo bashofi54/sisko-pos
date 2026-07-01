@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom"; // <- 1. TAMBAH INI
+import { Link } from "react-router-dom"; 
 import api from "../api/axios";
 
 export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const role = user?.role; // 'owner' | 'gudang' | 'kasir'
 
-  // RULE ROLE BARU: SEMUA BOLEH TAMBAH, EDIT, HAPUS. CUMA OWNER YG LIAT LAPORAN
+  // ===== PERMISSION BARU SESUAI PERMINTAAN =====
   const canAddProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // Semua boleh tambah
-  const canEditProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // <- 2. KASIR DITAMBAHIN BOLEH EDIT
-  const canDeleteProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // <- 3. KASIR & GUDANG DITAMBAHIN BOLEH HAPUS
+  const canEditProducts = role === 'owner' || role === 'gudang'; // <- KASIR DIHILANGIN DARI SINI
+  const canDeleteProducts = role === 'owner' || role === 'gudang' || role === 'kasir'; // Kasir & Gudang boleh hapus
   const canSeeReports = role === 'owner'; // Cuma Owner
   const canOpenKasir = role === 'owner' || role === 'kasir'; // Owner & Kasir
   const canManageProducts = canAddProducts || canEditProducts || canDeleteProducts; // Ada kolom aksi atau enggak
@@ -74,11 +74,12 @@ export default function Dashboard() {
     setFormErr("");
     setSubmitting(true);
     try {
+      // SAFETY NET: Paksa angka tidak boleh minus sebelum kirim
       const payload = {
         name: formData.name,
         barcode: formData.barcode || null,
-        price: Number(formData.price),
-        stock: Number(formData.stock) || 0,
+        price: Math.max(0, Number(formData.price) || 0), // Minimal 0
+        stock: Math.max(0, Math.floor(Number(formData.stock) || 0)), // Minimal 0 & dibulatkan
       };
       if (isEdit) {
         await api.put(`/products/${editId}`, payload);
@@ -157,18 +158,18 @@ export default function Dashboard() {
               >
                 Refresh
               </button>
-              {canOpenKasir && ( // <- CUMA Owner & Kasir
-                <Link // <- 4. GANTI DARI <a> KE <Link>
-                  to="/pos" // <- 5. href -> to
+              {canOpenKasir && ( 
+                <Link 
+                  to="/pos" 
                   className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
                 >
                   Buka Kasir
                 </Link>
               )}
-              {canSeeReports && ( // <- Cuma Owner
-                <Link // <- 6. GANTI DARI <a> KE <Link>
-                  to="/reports" // <- 7. href -> to
-                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
+              {canSeeReports && ( 
+                <Link 
+                  to="/reports" 
+                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700"
                 >
                   Laporan
                 </Link>
@@ -210,7 +211,7 @@ export default function Dashboard() {
                         <td className="border dark:border-gray-600 p-2 text-gray-900 dark:text-white">{p.stock}</td>
                         {canManageProducts && (
                           <td className="border dark:border-gray-600 p-2 text-center space-x-1">
-                            {canEditProducts && ( // <- Owner, Gudang, Kasir
+                            {canEditProducts && ( // <- Owner & Gudang doang
                               <button
                                 onClick={() => openEditModal(p)}
                                 className="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600"
@@ -250,15 +251,41 @@ export default function Dashboard() {
               <input type="text" placeholder="Nama Produk *" value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" required />
+              
               <input type="text" placeholder="Barcode" value={formData.barcode}
                 onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                 className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" />
-              <input type="number" placeholder="Harga *" value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" required />
-              <input type="number" placeholder="Stok" value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" />
+
+              {/* INPUT HARGA - SUDAH DI-FIX */}
+              <input 
+                type="number" 
+                placeholder="Harga *" 
+                value={formData.price}
+                min="0"
+                step="0.01"
+                onWheel={(e) => e.target.blur()} // Matiin scroll
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }} // Blokir -
+                onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) })}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" 
+                required 
+              />
+
+              {/* INPUT STOK - SUDAH DI-FIX */}
+              <input 
+                type="number" 
+                placeholder="Stok" 
+                value={formData.stock}
+                min="0"
+                step="1"
+                onWheel={(e) => e.target.blur()} // Matiin scroll
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') e.preventDefault(); // Blokir - . e
+                  if (e.key === 'ArrowDown' && Number(formData.stock) <= 0) e.preventDefault(); // Blokir panah bawah di 0
+                }}
+                onChange={(e) => setFormData({ ...formData, stock: e.target.value === '' ? '' : Math.max(0, Math.floor(Number(e.target.value))) })}
+                className="w-full p-2 border dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white" 
+              />
+
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowModal(false)}
                   className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-400">Batal</button>

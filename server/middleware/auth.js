@@ -23,18 +23,18 @@ const ownerOnly = (req, res, next) => {
   next();
 };
 
-// 2. KHUS GUDANG + OWNER. Contoh: Tambah/Ubah Produk
+// 2. KHUS GUDANG + KHUS KASIR + OWNER. Contoh: Tambah/Ubah Produk
 const gudangOnly = (req, res, next) => {
-  if (!req.user || (req.user.role!== 'owner' && req.user.role!== 'gudang')) {
-    return res.status(403).json({ message: 'Akses ditolak. Hanya Gudang/Owner yang bisa akses' });
+  if (!req.user || (req.user.role!== 'owner' && req.user.role!== 'kasir' && req.user.role!== 'gudang')) {
+    return res.status(403).json({ message: 'Akses ditolak. Hanya Gudang/Owner/kasir yang bisa akses' });
   }
   next();
 };
 
-// 3. KHUS KASIR + OWNER. Contoh: Checkout
+// 3.  KHUS GUDANG + KHUS KASIR + OWNER. Contoh: Checkout
 const kasirOnly = (req, res, next) => {
-  if (!req.user || (req.user.role!== 'owner' && req.user.role!== 'kasir')) {
-    return res.status(403).json({ message: 'Akses ditolak. Hanya Kasir/Owner yang bisa akses' });
+  if (!req.user || (req.user.role!== 'owner' && req.user.role!== 'kasir' && req.user.role!== 'gudang')) {
+    return res.status(403).json({ message: 'Akses ditolak. Hanya Kasir/Owner/gudang yang bisa akses' });
   }
   next();
 };
