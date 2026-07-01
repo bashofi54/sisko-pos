@@ -3,7 +3,7 @@
 1.  **1 DB UNTUK SEMUA**: API ini pake Neon PostgreSQL. Jadi semua orang nembak ke 1 database yang sama. Gak perlu setup DB lokal.
 2.  **SEED CUKUP 1x**: Cukup Developer yang jalanin `npm run seed` 1x pas awal. User lain gak perlu.
 3.  **AKUN DEMO PUBLIK**: 
-Siap guru. Kita kunci jadi 1 dokumen. 
+. 
 # SISKO - Sistem Informasi Toko Sederhana
 
 Backend API untuk Aplikasi Kasir Toko Sederhana. Dibangun pake `Node.js + Express + PostgreSQL`. Arsitektur `JWT + RBAC` biar aman.
